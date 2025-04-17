@@ -116,27 +116,27 @@
       const latlng = e.latlng;
       const dialog = document.createElement('div');
       dialog.className = 'type-dialog';
-      dialog.style.left = ${e.originalEvent.pageX}px;
-      dialog.style.top = ${e.originalEvent.pageY}px;
-      dialog.innerHTML = 
+      dialog.style.left = `${e.originalEvent.pageX}px`;
+      dialog.style.top = `${e.originalEvent.pageY}px`;
+      dialog.innerHTML = `
         <p>Dodaj:</p>
         <button onclick="confirmAddType('nocleg', ${latlng.lat}, ${latlng.lng}, this)">Nocleg</button>
         <button onclick="confirmAddType('atrakcja', ${latlng.lat}, ${latlng.lng}, this)">Atrakcja</button>
         <button onclick="confirmAddType('jedzenie', ${latlng.lat}, ${latlng.lng}, this)">Jedzenie</button>
-      ;
+      `;
       document.body.appendChild(dialog);
     }
 
     function confirmAddType(type, lat, lng, btn) {
       const dialog = document.createElement('div');
       dialog.className = 'confirm-dialog';
-      dialog.style.left = ${btn.parentElement.style.left};
-      dialog.style.top = ${btn.parentElement.style.top};
-      dialog.innerHTML = 
+      dialog.style.left = `${btn.parentElement.style.left}`;
+      dialog.style.top = `${btn.parentElement.style.top}`;
+      dialog.innerHTML = `
         <p>Potwierdź dodanie punktu:</p>
         <button onclick="handleAddType('${type}', ${lat}, ${lng}, true, this)">Potwierdź</button>
         <button onclick="handleAddType('${type}', ${lat}, ${lng}, false, this)">Anuluj</button>
-      ;
+      `;
       document.body.appendChild(dialog);
       btn.parentElement.remove();
     }
@@ -165,13 +165,13 @@
     function showRouteDialog(points) {
       const dialog = document.createElement('div');
       dialog.className = 'route-dialog';
-      dialog.style.left = ${event.pageX}px;
-      dialog.style.top = ${event.pageY}px;
-      dialog.innerHTML = 
+      dialog.style.left = `${event.pageX}px`;
+      dialog.style.top = `${event.pageY}px`;
+      dialog.innerHTML = `
         <p>Potwierdź trasę:</p>
         <button onclick="addRoute(${JSON.stringify(points)}, this)">Potwierdź</button>
         <button onclick="dismissDialog(this)">Anuluj</button>
-      ;
+      `;
       document.body.appendChild(dialog);
     }
 
@@ -202,14 +202,14 @@
       polylines = [];
 
       routes.forEach((route, index) => {
-        list.innerHTML += 
+        list.innerHTML += `
           <div class='route'>
             <b>${route.start} ➡️ ${route.end}</b> - €${route.cost}<br>
             Odjazd: ${route.departure}, Przyjazd: ${route.arrival}
             <button class='edit-btn' onclick='editRoute(${index})'>✏️ Edytuj</button>
             <button class='delete-btn' onclick='deleteRoute(${index})'>Usuń</button>
           </div>
-        ;
+        `;
 
         const polyline = L.polyline(route.points, { color: 'blue' }).addTo(map);
         polylines.push(polyline);
@@ -264,27 +264,27 @@
 
       filteredPlaces.forEach(p => {
         totalCost += p.cost;
-        list.innerHTML += <div class='place'><b>${p.name}</b> (${p.type}) - €${p.cost}<br>${p.date}<br>${p.desc}
+        list.innerHTML += `<div class='place'><b>${p.name}</b> (${p.type}) - €${p.cost}<br>${p.date}<br>${p.desc}
           <button onclick='editPlace(${p.id})'>✏️ Edytuj</button>
-          <button class='delete-btn' onclick='deletePlace(${p.id})'>Usuń</button></div>;
+          <button class='delete-btn' onclick='deletePlace(${p.id})'>Usuń</button></div>`;
 
         const color = p.type === 'nocleg' ? 'blue' : p.type === 'atrakcja' ? 'green' : 'red';
         const marker = L.marker([p.lat, p.lng], {
           icon: L.divIcon({
             className: 'custom-div-icon',
-            html: <div style="background-color:${color} !important;width:20px;height:20px;border-radius:50%;"></div>,
+            html: `<div style="background-color:${color} !important;width:20px;height:20px;border-radius:50%;"></div>`,
             iconSize: [20, 20]
           })
         }).addTo(map);
 
-        marker.bindTooltip(<b>${p.name}</b><br>${p.type}<br>${p.date}<br>€${p.cost}<br>${p.desc}, {
+        marker.bindTooltip(`<b>${p.name}</b><br>${p.type}<br>${p.date}<br>€${p.cost}<br>${p.desc}`, {
           permanent: false,
           direction: 'top'
         });
         markers.push(marker);
       });
 
-      list.innerHTML += <h3>💰 Łączny koszt: €${totalCost}</h3>;
+      list.innerHTML += `<h3>💰 Łączny koszt: €${totalCost}</h3>`;
     }
 
     renderPlaces();
