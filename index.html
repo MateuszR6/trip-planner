@@ -96,22 +96,28 @@
     function enableAddingMode() {
       alert("Kliknij na mapie, aby dodać punkt.");
       map.once('click', function(e) {
-        showTypeDialog(e.latlng);
+        showTypeDialog(e);
       });
     }
 
-    function showTypeDialog(latlng) {
+    function showTypeDialog(e) {
+      const latlng = e.latlng;
       const dialog = document.createElement('div');
       dialog.className = 'type-dialog';
-      dialog.style.left = `${event.pageX}px`;
-      dialog.style.top = `${event.pageY}px`;
+      dialog.style.left = `${e.originalEvent.pageX}px`;
+      dialog.style.top = `${e.originalEvent.pageY}px`;
       dialog.innerHTML = `
         <p>Dodaj:</p>
-        <button onclick="addPlace('nocleg', ${latlng.lat}, ${latlng.lng}); this.parentElement.remove();">Nocleg</button>
-        <button onclick="addPlace('atrakcja', ${latlng.lat}, ${latlng.lng}); this.parentElement.remove();">Atrakcja</button>
-        <button onclick="addPlace('jedzenie', ${latlng.lat}, ${latlng.lng}); this.parentElement.remove();">Jedzenie</button>
+        <button onclick="handleAddType('nocleg', ${latlng.lat}, ${latlng.lng}, this)">Nocleg</button>
+        <button onclick="handleAddType('atrakcja', ${latlng.lat}, ${latlng.lng}, this)">Atrakcja</button>
+        <button onclick="handleAddType('jedzenie', ${latlng.lat}, ${latlng.lng}, this)">Jedzenie</button>
       `;
       document.body.appendChild(dialog);
+    }
+
+    function handleAddType(type, lat, lng, btn) {
+      btn.parentElement.remove();
+      addPlace(type, lat, lng);
     }
 
     function addPlace(type, lat, lng) {
@@ -140,6 +146,7 @@
       list.innerHTML += filteredPlaces.map(p => {
         totalCost += p.cost;
         return `<div class='place'><b>${p.name}</b> (${p.type}) - €${p.cost}<br>${p.date}<br>${p.desc}
+        <button onclick='editPlace(${p.id})'>✏️ Edytuj</button>
         <button class='delete-btn' onclick='deletePlace(${p.id})'>Usuń</button></div>`;
       }).join('') + `<h3>💰 Łączny koszt: €${totalCost}</h3>`;
 
@@ -151,13 +158,29 @@
       }
 
       filteredPlaces.forEach(p => {
-        const marker = L.marker([p.lat, p.lng]).addTo(map);
+        const color = p.type === 'nocleg' ? 'blue' : p.type === 'atrakcja' ? 'green' : 'red';
+        const icon = new L.Icon({
+          iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${color}`,
+          iconSize: [21, 34],
+          iconAnchor: [10, 34],
+          popupAnchor: [0, -30]
+        });
+        const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
         marker.bindTooltip(`<b>${p.name}</b><br>${p.type}<br>${p.date}<br>€${p.cost}<br>${p.desc}`, {
           permanent: false,
           direction: 'top'
         });
         markers.push(marker);
       });
+    }
+
+    function editPlace(id) {
+      const place = places.find(p => p.id === id);
+      document.getElementById('placeName').value = place.name;
+      document.getElementById('placeCost').value = place.cost;
+      document.getElementById('placeDate').value = place.date;
+      document.getElementById('placeDesc').value = place.desc;
+      deletePlace(id);
     }
 
     function deletePlace(id) {
@@ -180,4 +203,3 @@
   </script>
 </body>
 </html>
-
