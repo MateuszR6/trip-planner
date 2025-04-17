@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Planner Podróży po Europie</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
@@ -71,7 +70,6 @@
     <input type="date" id="placeDate" />
     <textarea id="placeDesc" placeholder="Opis"></textarea>
     <button onclick="enableAddingMode()">📌 Kliknij na mapie, aby dodać</button>
-    <button onclick="exportToJson()">📤 Eksportuj do JSON</button>
     <select id="filterType" onchange="renderPlaces()">
       <option value="">Wszystkie typy</option>
       <option value="nocleg">Nocleg</option>
@@ -90,7 +88,6 @@
     }).addTo(map);
 
     let places = JSON.parse(localStorage.getItem('places')) || [];
-    let routeLayer = null;
     let markers = [];
     let editingPlaceId = null;
 
@@ -167,28 +164,21 @@
           <button onclick='editPlace(${p.id})'>✏️ Edytuj</button>
           <button class='delete-btn' onclick='deletePlace(${p.id})'>Usuń</button></div>`;
 
-        const color = p.type === 'nocleg' ? '0000FF' : p.type === 'atrakcja' ? '008000' : 'FF0000';
-        const icon = new L.Icon({
-          iconUrl: `https://chart.googleapis.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|${color}`,
-          iconSize: [21, 34],
-          iconAnchor: [10, 34],
-          popupAnchor: [0, -30]
-        });
+        const color = p.type === 'nocleg' ? 'blue' : p.type === 'atrakcja' ? 'green' : 'red';
+        const marker = L.marker([p.lat, p.lng], {
+          icon: L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color:${color};width:20px;height:20px;border-radius:50%;"></div>`,
+            iconSize: [20, 20]
+          })
+        }).addTo(map);
 
-        const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
         marker.bindTooltip(`<b>${p.name}</b><br>${p.type}<br>${p.date}<br>€${p.cost}<br>${p.desc}`, {
           permanent: false,
           direction: 'top'
         });
         markers.push(marker);
       });
-
-      if (routeLayer) map.removeLayer(routeLayer);
-      const latlngs = filteredPlaces.map(p => [p.lat, p.lng]);
-      if (latlngs.length > 1) {
-        routeLayer = L.polyline(latlngs, {color: 'blue'}).addTo(map);
-        map.fitBounds(routeLayer.getBounds());
-      }
 
       list.innerHTML += `<h3>💰 Łączny koszt: €${totalCost}</h3>`;
     }
@@ -206,16 +196,6 @@
       places = places.filter(p => p.id !== id);
       localStorage.setItem('places', JSON.stringify(places));
       renderPlaces();
-    }
-
-    function exportToJson() {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(places));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "trip-data.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
     }
 
     renderPlaces();
