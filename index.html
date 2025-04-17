@@ -9,7 +9,7 @@
     body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
     h1 { background: #3b82f6; color: white; padding: 1rem; margin: 0; text-align: center; }
     #map { height: 400px; width: 100%; }
-    #controls, #placesList {
+    #controls, #placesList, #routesList {
       max-width: 800px;
       margin: auto;
       padding: 1rem;
@@ -34,7 +34,7 @@
       cursor: pointer;
     }
     button:hover { background: #059669; }
-    .place {
+    .place, .route {
       border-bottom: 1px solid #ccc;
       padding: 0.5rem 0;
     }
@@ -43,6 +43,11 @@
       margin-left: 1rem;
     }
     .delete-btn:hover { background: #dc2626; }
+    .edit-btn {
+      background: #3b82f6;
+      margin-left: 1rem;
+    }
+    .edit-btn:hover { background: #2563eb; }
     .type-dialog, .confirm-dialog, .route-dialog {
       position: absolute;
       background: white;
@@ -85,6 +90,7 @@
     <button onclick="enableRouteAddingMode()">🚆 Kliknij, aby zaznaczyć trasę</button>
   </div>
   <div id="placesList"></div>
+  <div id="routesList"></div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
@@ -189,12 +195,31 @@
     }
 
     function renderRoutes() {
+      const list = document.getElementById('routesList');
+      list.innerHTML = '<h2>🚆 Lista tras</h2>';
+
       polylines.forEach(p => map.removeLayer(p));
       polylines = [];
-      routes.forEach(route => {
+
+      routes.forEach((route, index) => {
+        list.innerHTML += `
+          <div class='route'>
+            <b>${route.start} ➡️ ${route.end}</b> - €${route.cost}<br>
+            Odjazd: ${route.departure}, Przyjazd: ${route.arrival}
+            <button class='edit-btn' onclick='editRoute(${index})'>✏️ Edytuj</button>
+            <button class='delete-btn' onclick='deleteRoute(${index})'>Usuń</button>
+          </div>
+        `;
+
         const polyline = L.polyline(route.points, { color: 'blue' }).addTo(map);
         polylines.push(polyline);
       });
+    }
+
+    function deleteRoute(index) {
+      routes.splice(index, 1);
+      localStorage.setItem('routes', JSON.stringify(routes));
+      renderRoutes();
     }
 
     function addPlace(type, lat, lng) {
