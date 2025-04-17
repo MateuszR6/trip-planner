@@ -119,10 +119,10 @@
     }
 
     function addPlace(type, lat, lng) {
-      const name = document.getElementById('placeName').value;
+      const name = document.getElementById('placeName').value || "Brak nazwy";
       const cost = parseFloat(document.getElementById('placeCost').value) || 0;
-      const date = document.getElementById('placeDate').value;
-      const desc = document.getElementById('placeDesc').value;
+      const date = document.getElementById('placeDate').value || "Brak daty";
+      const desc = document.getElementById('placeDesc').value || "Brak opisu";
 
       const id = editingPlaceId || Date.now();
       const place = { id, name, type, cost, date, desc, lat, lng };
@@ -168,7 +168,7 @@
         const marker = L.marker([p.lat, p.lng], {
           icon: L.divIcon({
             className: 'custom-div-icon',
-            html: `<div style="background-color:${color};width:20px;height:20px;border-radius:50%;"></div>`,
+            html: `<div style="background-color:${color} !important;width:20px;height:20px;border-radius:50%;"></div>`,
             iconSize: [20, 20]
           })
         }).addTo(map);
