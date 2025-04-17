@@ -43,13 +43,7 @@
       margin-left: 1rem;
     }
     .delete-btn:hover { background: #dc2626; }
-    @media (max-width: 600px) {
-      #controls, #placesList {
-        padding: 0.5rem;
-      }
-      h1 { font-size: 1.2rem; }
-    }
-    .type-dialog {
+    .type-dialog, .confirm-dialog {
       position: absolute;
       background: white;
       padding: 1rem;
@@ -82,7 +76,6 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const map = L.map('map').setView([48.8566, 2.3522], 5);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
     }).addTo(map);
@@ -106,16 +99,32 @@
       dialog.style.top = `${e.originalEvent.pageY}px`;
       dialog.innerHTML = `
         <p>Dodaj:</p>
-        <button onclick="handleAddType('nocleg', ${latlng.lat}, ${latlng.lng}, this)">Nocleg</button>
-        <button onclick="handleAddType('atrakcja', ${latlng.lat}, ${latlng.lng}, this)">Atrakcja</button>
-        <button onclick="handleAddType('jedzenie', ${latlng.lat}, ${latlng.lng}, this)">Jedzenie</button>
+        <button onclick="confirmAddType('nocleg', ${latlng.lat}, ${latlng.lng}, this)">Nocleg</button>
+        <button onclick="confirmAddType('atrakcja', ${latlng.lat}, ${latlng.lng}, this)">Atrakcja</button>
+        <button onclick="confirmAddType('jedzenie', ${latlng.lat}, ${latlng.lng}, this)">Jedzenie</button>
       `;
       document.body.appendChild(dialog);
     }
 
-    function handleAddType(type, lat, lng, btn) {
+    function confirmAddType(type, lat, lng, btn) {
+      const dialog = document.createElement('div');
+      dialog.className = 'confirm-dialog';
+      dialog.innerHTML = `
+        <p>Potwierdź dodanie punktu:</p>
+        <button onclick="handleAddType('${type}', ${lat}, ${lng}, true, this)">Potwierdź</button>
+        <button onclick="handleAddType('${type}', ${lat}, ${lng}, false, this)">Anuluj</button>
+      `;
+      document.body.appendChild(dialog);
       btn.parentElement.remove();
-      addPlace(type, lat, lng);
+    }
+
+    function handleAddType(type, lat, lng, confirmed, btn) {
+      btn.parentElement.remove();
+      if (confirmed) {
+        addPlace(type, lat, lng);
+      } else {
+        alert("Wybierz ponownie miejsce na mapie.");
+      }
     }
 
     function addPlace(type, lat, lng) {
@@ -181,21 +190,6 @@
       });
 
       list.innerHTML += `<h3>💰 Łączny koszt: €${totalCost}</h3>`;
-    }
-
-    function editPlace(id) {
-      const place = places.find(p => p.id === id);
-      document.getElementById('placeName').value = place.name;
-      document.getElementById('placeCost').value = place.cost;
-      document.getElementById('placeDate').value = place.date;
-      document.getElementById('placeDesc').value = place.desc;
-      editingPlaceId = id;
-    }
-
-    function deletePlace(id) {
-      places = places.filter(p => p.id !== id);
-      localStorage.setItem('places', JSON.stringify(places));
-      renderPlaces();
     }
 
     renderPlaces();
