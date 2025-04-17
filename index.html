@@ -43,7 +43,7 @@
       margin-left: 1rem;
     }
     .delete-btn:hover { background: #dc2626; }
-    .type-dialog, .confirm-dialog {
+    .type-dialog, .confirm-dialog, .route-dialog {
       position: absolute;
       background: white;
       padding: 1rem;
@@ -51,6 +51,11 @@
       border-radius: 5px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       z-index: 1000;
+    }
+    .section-title {
+      margin-top: 2rem;
+      font-size: 1.5rem;
+      color: #3b82f6;
     }
   </style>
 </head>
@@ -70,6 +75,14 @@
       <option value="atrakcja">Atrakcja</option>
       <option value="jedzenie">Jedzenie</option>
     </select>
+
+    <h2 class="section-title">Dodaj trasę</h2>
+    <input type="text" id="routeStart" placeholder="Miejsce początkowe" />
+    <input type="text" id="routeEnd" placeholder="Miejsce docelowe" />
+    <input type="number" id="routeCost" placeholder="Koszt biletu (€)" />
+    <input type="time" id="departureTime" placeholder="Godzina odjazdu" />
+    <input type="time" id="arrivalTime" placeholder="Godzina przyjazdu" />
+    <button onclick="enableRouteAddingMode()">🚆 Kliknij, aby zaznaczyć trasę</button>
   </div>
   <div id="placesList"></div>
 
@@ -81,7 +94,9 @@
     }).addTo(map);
 
     let places = JSON.parse(localStorage.getItem('places')) || [];
+    let routes = JSON.parse(localStorage.getItem('routes')) || [];
     let markers = [];
+    let polylines = [];
     let editingPlaceId = null;
 
     function enableAddingMode() {
@@ -109,6 +124,8 @@
     function confirmAddType(type, lat, lng, btn) {
       const dialog = document.createElement('div');
       dialog.className = 'confirm-dialog';
+      dialog.style.left = `${btn.parentElement.style.left}`;
+      dialog.style.top = `${btn.parentElement.style.top}`;
       dialog.innerHTML = `
         <p>Potwierdź dodanie punktu:</p>
         <button onclick="handleAddType('${type}', ${lat}, ${lng}, true, this)">Potwierdź</button>
@@ -125,6 +142,59 @@
       } else {
         alert("Wybierz ponownie miejsce na mapie.");
       }
+    }
+
+    function enableRouteAddingMode() {
+      alert("Kliknij dwa miejsca na mapie, aby zaznaczyć trasę.");
+      let points = [];
+      map.on('click', function(e) {
+        points.push(e.latlng);
+        if (points.length === 2) {
+          map.off('click');
+          showRouteDialog(points);
+        }
+      });
+    }
+
+    function showRouteDialog(points) {
+      const dialog = document.createElement('div');
+      dialog.className = 'route-dialog';
+      dialog.style.left = `${event.pageX}px`;
+      dialog.style.top = `${event.pageY}px`;
+      dialog.innerHTML = `
+        <p>Potwierdź trasę:</p>
+        <button onclick="addRoute(${JSON.stringify(points)}, this)">Potwierdź</button>
+        <button onclick="dismissDialog(this)">Anuluj</button>
+      `;
+      document.body.appendChild(dialog);
+    }
+
+    function addRoute(points, btn) {
+      const start = document.getElementById('routeStart').value || "Brak nazwy";
+      const end = document.getElementById('routeEnd').value || "Brak nazwy";
+      const cost = parseFloat(document.getElementById('routeCost').value) || 0;
+      const departure = document.getElementById('departureTime').value || "Brak godziny";
+      const arrival = document.getElementById('arrivalTime').value || "Brak godziny";
+
+      const route = { start, end, cost, departure, arrival, points };
+      routes.push(route);
+
+      localStorage.setItem('routes', JSON.stringify(routes));
+      renderRoutes();
+      btn.parentElement.remove();
+    }
+
+    function dismissDialog(btn) {
+      btn.parentElement.remove();
+    }
+
+    function renderRoutes() {
+      polylines.forEach(p => map.removeLayer(p));
+      polylines = [];
+      routes.forEach(route => {
+        const polyline = L.polyline(route.points, { color: 'blue' }).addTo(map);
+        polylines.push(polyline);
+      });
     }
 
     function addPlace(type, lat, lng) {
@@ -193,6 +263,7 @@
     }
 
     renderPlaces();
+    renderRoutes();
   </script>
 </body>
 </html>
