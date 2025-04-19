@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="pl">
+<!DOCTYPE html><html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,31 +9,31 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-  <!-- Flatpickr for date/time pickers -->
+  <!-- Flatpickr -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <style>
-    /* Custom styles for modals and scrollbars */
     body { overscroll-behavior: none; }
     .modal-bg { background-color: rgba(0,0,0,0.5); }
     .scrollbar-thin::-webkit-scrollbar { width: 8px; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }
+    #map-top { height: 200px; }
   </style>
 </head>
 <body class="font-sans bg-gray-100 text-gray-800">
   <header class="bg-white shadow p-4 sticky top-0 z-10">
     <h1 class="text-2xl font-bold">Mapa Podróży</h1>
+    <div id="map-top" class="mt-2 rounded overflow-hidden"></div>
   </header>
-  <main class="flex flex-col md:flex-row h-[calc(100vh-4rem)]">
+  <main class="flex flex-col md:flex-row h-[calc(100vh-16rem)]">
     <!-- Map Container -->
     <div id="map" class="w-full md:w-2/3 h-full"></div>
-
     <!-- Sidebar -->
     <div class="w-full md:w-1/3 p-4 overflow-auto scrollbar-thin">
       <!-- Add Point Section -->
       <section id="marker-section" class="mb-6">
         <h2 class="text-xl font-semibold mb-2">Dodaj punkt</h2>
         <form id="markerForm" class="space-y-2">
-          <select id="markerType" class="w-full p-2 border rounded" aria-label="Typ punktu">
+          <select id="markerType" class="w-full p-2 border rounded">
             <option value="Jedzenie">Jedzenie</option>
             <option value="Nocleg">Nocleg</option>
             <option value="Atrakcja">Atrakcja</option>
@@ -46,236 +45,141 @@
           <input id="markerCost" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Koszt" />
           <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Dodaj punkt</button>
         </form>
-      </section>
+      </section><!-- Filter/Search -->
+  <div class="mb-6">
+    <input id="searchInput" class="w-full p-2 border rounded mb-2" placeholder="Szukaj punktu...">
+    <select id="filterType" class="w-full p-2 border rounded">
+      <option value="Wszystko">Wszystko</option>
+      <option value="Jedzenie">Jedzenie</option>
+      <option value="Nocleg">Nocleg</option>
+      <option value="Atrakcja">Atrakcja</option>
+    </select>
+  </div>
 
-      <!-- Create Route Section -->
-      <section id="route-section" class="mb-6">
-        <h2 class="text-xl font-semibold mb-2">Dodaj trasę</h2>
-        <form id="routeForm" class="space-y-2">
-          <div class="flex space-x-2">
-            <select id="startPoint" class="flex-1 p-2 border rounded" aria-label="Punkt początkowy"></select>
-            <select id="endPoint" class="flex-1 p-2 border rounded" aria-label="Punkt końcowy"></select>
-          </div>
-          <input id="departure" class="w-full p-2 border rounded" placeholder="Data i godzina odjazdu" />
-          <input id="arrival" class="w-full p-2 border rounded" placeholder="Data i godzina przyjazdu" />
-          <textarea id="routeDesc" class="w-full p-2 border rounded" placeholder="Opis trasy"></textarea>
-          <input id="routeCost" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Koszt transportu" />
-          <button type="submit" class="w-full bg-purple-500 text-white p-2 rounded hover:bg-purple-600">Dodaj trasę</button>
-        </form>
-      </section>
-
-      <!-- Extra Costs Section -->
-      <section id="extra-section" class="mb-6">
-        <h2 class="text-xl font-semibold mb-2">Koszty dodatkowe</h2>
-        <form id="extraForm" class="space-y-2">
-          <input id="extraDesc" class="w-full p-2 border rounded" placeholder="Opis kosztu" required />
-          <input id="extraAmount" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Kwota" required />
-          <button type="submit" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Dodaj koszt</button>
-        </form>
-      </section>
-
-      <!-- Lists & Summary -->
-      <section id="lists-section" class="space-y-4">
-        <div>
-          <h3 class="font-semibold">Lista punktów</h3>
-          <select id="filterType" class="w-full p-2 border rounded my-2">
-            <option value="Wszystko">Wszystko</option>
-            <option value="Jedzenie">Jedzenie</option>
-            <option value="Nocleg">Nocleg</option>
-            <option value="Atrakcja">Atrakcja</option>
-          </select>
-          <div id="placesList" class="space-y-2"></div>
-        </div>
-        <div>
-          <h3 class="font-semibold">Lista tras</h3>
-          <div id="routesList" class="space-y-2"></div>
-        </div>
-        <div>
-          <h3 class="font-semibold">Podsumowanie kosztów</h3>
-          <div id="costSummary" class="space-y-1"></div>
-        </div>
-      </section>
+  <!-- Lists & Summary -->
+  <section id="lists-section" class="space-y-4">
+    <div>
+      <h3 class="font-semibold">Lista punktów</h3>
+      <div id="placesList" class="space-y-2"></div>
     </div>
-  </main>
+    <div>
+      <h3 class="font-semibold">Podsumowanie kosztów</h3>
+      <div id="costSummary" class="space-y-1"></div>
+    </div>
+  </section>
+</div>
 
-  <!-- Scripts -->
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script type="module">
-    // Initialize IndexedDB with Dexie
+  </main>  <!-- Scripts -->  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>  <script>
     class TravelDB extends Dexie {
       constructor() {
         super('TravelDB');
-        this.version(1).stores({ markers: '++id,type,name,address,desc,cost,lat,lng', routes: '++id,start,end,departure,arrival,desc,cost', extras: '++id,desc,amount' });
+        this.version(1).stores({ markers: '++id,type,name,address,desc,cost,lat,lng' });
       }
     }
     const db = new TravelDB();
 
-    // Manager Classes
     class MarkerManager {
       static async add(data) { await db.markers.add(data); }
+      static async update(id, data) { await db.markers.update(id, data); }
       static async getAll() { return db.markers.toArray(); }
       static async remove(id) { await db.markers.delete(id); }
     }
 
-    class RouteManager {
-      static async add(data) { await db.routes.add(data); }
-      static async getAll() { return db.routes.toArray(); }
-      static async remove(id) { await db.routes.delete(id); }
-    }
-
-    class ExtraManager {
-      static async add(data) { await db.extras.add(data); }
-      static async getAll() { return db.extras.toArray(); }
-      static async remove(id) { await db.extras.delete(id); }
-    }
-
-    // UI Logic
     class UI {
-      static map; static markersLayer;
+      static map; static topMap; static markersLayer;
       static async init() {
-        // Map
-        UI.map = L.map('map').setView([52.2,21.0],6);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM'}).addTo(UI.map);
-        UI.markersLayer = L.markerClusterGroup(); UI.map.addLayer(UI.markersLayer);
+        UI.map = L.map('map').setView([52.2, 21.0], 6);
+        UI.topMap = L.map('map-top', { zoomControl: false, dragging: false }).setView([52.2, 21.0], 5);
 
-        // Date/time pickers
+        const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
+        tiles.addTo(UI.map); tiles.addTo(UI.topMap);
+        UI.markersLayer = L.markerClusterGroup();
+        UI.map.addLayer(UI.markersLayer);
+
         flatpickr('#departure',{enableTime:true,dateFormat:'Y-m-d H:i'});
         flatpickr('#arrival',{enableTime:true,dateFormat:'Y-m-d H:i'});
 
-        // Event Listeners
         document.getElementById('markerForm').addEventListener('submit', UI.handleAddMarker);
-        document.getElementById('routeForm').addEventListener('submit', UI.handleAddRoute);
-        document.getElementById('extraForm').addEventListener('submit', UI.handleAddExtra);
         document.getElementById('filterType').addEventListener('change', UI.renderLists);
+        document.getElementById('searchInput').addEventListener('input', UI.renderLists);
 
-        // Initial render
+        UI.map.on('click', UI.mapClickAdd);
         await UI.renderLists();
+      }
 
-        // Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-          const swCode = `self.addEventListener('install', e=>{e.waitUntil(caches.open('travel-cache').then(c=>c.addAll(['/',])))});
-self.addEventListener('fetch', e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`;
-          const blob = new Blob([swCode],{type:'application/javascript'});
-          navigator.serviceWorker.register(URL.createObjectURL(blob));
-        }
+      static async mapClickAdd(e) {
+        const name = prompt("Nazwa punktu:");
+        if (!name) return;
+        await MarkerManager.add({type: "Atrakcja", name, address: '', desc: '', cost: 0, lat: e.latlng.lat, lng: e.latlng.lng});
+        UI.renderLists();
       }
 
       static async handleAddMarker(e) {
         e.preventDefault();
-        const type = e.target.markerType.value;
-        const name = e.target.markerName.value;
-        const address = e.target.markerAddress.value;
-        const desc = e.target.markerDesc.value;
-        const cost = parseFloat(e.target.markerCost.value) || 0;
-        // Geocoding
-        const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
-          .then(r=>r.json());
-        const { lat, lon } = geo[0] || { lat:52.2, lon:21.0 };
-        await MarkerManager.add({type,name,address,desc,cost,lat, lng: lon});
-        e.target.reset();
-        UI.renderLists();
-      }
-
-      static async handleAddRoute(e) {
-        e.preventDefault();
-        const start = +e.target.startPoint.value;
-        const end   = +e.target.endPoint.value;
-        const departure = e.target.departure.value;
-        const arrival   = e.target.arrival.value;
-        const desc = e.target.routeDesc.value;
-        const cost = parseFloat(e.target.routeCost.value)||0;
-        if (start===end) return alert('Wybierz różne punkty');
-        await RouteManager.add({start,end,departure,arrival,desc,cost});
-        e.target.reset();
-        UI.renderLists();
-      }
-
-      static async handleAddExtra(e) {
-        e.preventDefault();
-        const desc = e.target.extraDesc.value;
-        const amount = parseFloat(e.target.extraAmount.value)||0;
-        await ExtraManager.add({desc,amount});
+        const { markerType: { value: type }, markerName: { value: name }, markerAddress: { value: address }, markerDesc: { value: desc }, markerCost: { value: costRaw } } = e.target;
+        const cost = parseFloat(costRaw) || 0;
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`).then(r => r.json());
+        const { lat, lon } = geo[0] || { lat: 52.2, lon: 21.0 };
+        await MarkerManager.add({ type, name, address, desc, cost, lat, lng: lon });
         e.target.reset();
         UI.renderLists();
       }
 
       static async renderLists() {
-        const markers = await MarkerManager.getAll();
-        const routes  = await RouteManager.getAll();
-        const extras  = await ExtraManager.getAll();
-
-        // Clear map markers & lists
-        UI.markersLayer.clearLayers();
-        document.getElementById('placesList').innerHTML='';
-        document.getElementById('routesList').innerHTML='';
-        document.getElementById('costSummary').innerHTML='';
+        const allMarkers = await MarkerManager.getAll();
         const filter = document.getElementById('filterType').value;
+        const search = document.getElementById('searchInput').value.toLowerCase();
 
-        // Populate point selectors
-        const startSel=document.getElementById('startPoint'), endSel=document.getElementById('endPoint');
-        startSel.innerHTML=endSel.innerHTML='';
-        markers.forEach((m,i)=>{
-          const opt = `<option value="${m.id}">${m.name||`Punkt ${m.id}`}</option>`;
-          startSel.innerHTML+=opt; endSel.innerHTML+=opt;
-        });
+        UI.markersLayer.clearLayers();
+        const container = document.getElementById('placesList');
+        container.innerHTML = '';
+        let food = 0, lodging = 0, attr = 0;
 
-        let transport=0, lodging=0, food=0, attr=0, extraSum=0;
+        for (const m of allMarkers) {
+          if ((filter !== 'Wszystko' && m.type !== filter) || (search && !m.name.toLowerCase().includes(search))) continue;
 
-        for (const m of markers) {
-          if (filter==='Wszystko' || filter===m.type) {
-            // Add to list
-            const div = document.createElement('div');
-            div.className='p-2 bg-white rounded shadow flex justify-between items-start';
-            div.innerHTML=`<div><strong>${m.name}</strong><p>${m.type} • ${m.desc}</p><p>${m.address}</p><p>Koszt: ${m.cost.toFixed(2)}</p></div>`;
-            const btn = document.createElement('button'); btn.textContent='Usuń'; btn.className='text-red-500';
-            btn.onclick=async()=>{ await MarkerManager.remove(m.id); UI.renderLists(); };
-            div.appendChild(btn);
-            document.getElementById('placesList').append(div);
-          }
-          // Add marker to map
-          const marker = L.marker([m.lat,m.lng]).bindPopup(`<strong>${m.name}</strong><br>${m.desc}`);
-          UI.markersLayer.addLayer(marker);
-          // Sum costs
-          if (m.type==='Jedzenie') food+=m.cost;
-          if (m.type==='Nocleg') lodging+=m.cost;
-          if (m.type==='Atrakcja') attr+=m.cost;
-        }
-
-        for (const r of routes) {
-          const mStart = markers.find(x=>x.id===r.start);
-          const mEnd   = markers.find(x=>x.id===r.end);
-          if (!mStart||!mEnd) continue;
-          // Draw polyline
-          L.polyline([[mStart.lat,mStart.lng],[mEnd.lat,mEnd.lng]],{color:'purple'}).addTo(UI.map);
-          transport+=r.cost;
-          // List item
           const div = document.createElement('div');
-          div.className='p-2 bg-white rounded shadow flex justify-between items-start';
-          div.innerHTML=`<div><strong>${mStart.name}</strong> → <strong>${mEnd.name}</strong><p>${r.departure} → ${r.arrival}</p><p>Koszt: ${r.cost.toFixed(2)}</p></div>`;
-          const btn = document.createElement('button'); btn.textContent='Usuń'; btn.className='text-red-500';
-          btn.onclick=async()=>{ await RouteManager.remove(r.id); UI.renderLists(); };
-          div.appendChild(btn);
-          document.getElementById('routesList').append(div);
+          div.className = 'p-2 bg-white rounded shadow';
+          div.innerHTML = `<strong>${m.name}</strong><p>${m.type}</p><p>${m.desc}</p><p>${m.address}</p><p>Koszt: ${m.cost.toFixed(2)}</p>`;
+
+          const btnEdit = document.createElement('button');
+          btnEdit.textContent = 'Edytuj';
+          btnEdit.className = 'text-blue-500 mr-2';
+          btnEdit.onclick = async () => {
+            const newName = prompt('Nowa nazwa:', m.name);
+            if (newName) {
+              await MarkerManager.update(m.id, { name: newName });
+              UI.renderLists();
+            }
+          };
+
+          const btnRemove = document.createElement('button');
+          btnRemove.textContent = 'Usuń';
+          btnRemove.className = 'text-red-500';
+          btnRemove.onclick = async () => {
+            await MarkerManager.remove(m.id);
+            UI.renderLists();
+          };
+
+          const btnWrap = document.createElement('div');
+          btnWrap.className = 'mt-2';
+          btnWrap.append(btnEdit, btnRemove);
+          div.append(btnWrap);
+
+          container.appendChild(div);
+          const marker = L.marker([m.lat, m.lng]).bindPopup(`<strong>${m.name}</strong><br>${m.desc}`);
+          UI.markersLayer.addLayer(marker);
+
+          if (m.type === 'Jedzenie') food += m.cost;
+          if (m.type === 'Nocleg') lodging += m.cost;
+          if (m.type === 'Atrakcja') attr += m.cost;
         }
 
-        for (const ex of extras) { extraSum+=ex.amount; }
-
-        // Summary
-        const sumDiv = document.getElementById('costSummary');
-        sumDiv.innerHTML=
-          `<p>Koszt transportu: ${transport.toFixed(2)}</p>`+
-          `<p>Noclegi: ${lodging.toFixed(2)}</p>`+
-          `<p>Atrakcje: ${attr.toFixed(2)}</p>`+
-          `<p>Jedzenie: ${food.toFixed(2)}</p>`+
-          `<p>Dodatkowe: ${extraSum.toFixed(2)}</p>`+
-          `<p class="font-bold">Razem: ${(transport+lodging+attr+food+extraSum).toFixed(2)}</p>`;
+        document.getElementById('costSummary').innerHTML =
+          `<p>Jedzenie: ${food.toFixed(2)}</p><p>Nocleg: ${lodging.toFixed(2)}</p><p>Atrakcje: ${attr.toFixed(2)}</p><p class="font-bold">Razem: ${(food + lodging + attr).toFixed(2)}</p>`;
       }
     }
 
-    document.addEventListener('DOMContentLoaded', ()=>UI.init());
-  </script>
-</body>
+    document.addEventListener('DOMContentLoaded', UI.init);
+  </script></body>
 </html>
