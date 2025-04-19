@@ -18,12 +18,16 @@
     .scrollbar-thin::-webkit-scrollbar { width: 8px; }
     .scrollbar-thin::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }
     #map-top { height: 200px; }
+    /* Na telefonie (max-width: 640px) ustawiamy nieco mniejszą wysokość, by mapa była widoczna */
+    @media (max-width: 640px) {
+      #map-top { height: 150px; }
+    }
   </style>
 </head>
 <body class="font-sans bg-gray-100 text-gray-800">
   <header class="bg-white shadow p-4 sticky top-0 z-10">
     <h1 class="text-2xl font-bold">Mapa Podróży</h1>
-    <!-- Mapa w nagłówku – teraz interaktywna -->
+    <!-- Mapa w nagłówku -->
     <div id="map-top" class="mt-2 rounded overflow-hidden"></div>
   </header>
   <main class="flex flex-col md:flex-row h-[calc(100vh-16rem)]">
@@ -31,7 +35,7 @@
     <div id="map" class="w-full md:w-2/3 h-full"></div>
     <!-- Sidebar -->
     <div class="w-full md:w-1/3 p-4 overflow-auto scrollbar-thin">
-      <!-- Add Point Section -->
+      <!-- Sekcja dodawania punktu -->
       <section id="marker-section" class="mb-6">
         <h2 class="text-xl font-semibold mb-2">Dodaj punkt</h2>
         <form id="markerForm" class="space-y-2">
@@ -58,7 +62,7 @@
           <option value="Atrakcja">Atrakcja</option>
         </select>
       </div>
-      <!-- Lists & Summary -->
+      <!-- Lista punktów i podsumowanie -->
       <section id="lists-section" class="space-y-4">
         <div>
           <h3 class="font-semibold">Lista punktów</h3>
@@ -69,9 +73,25 @@
           <div id="costSummary" class="space-y-1"></div>
         </div>
       </section>
+      
+      <!-- Sekcja tworzenia trasy -->
+      <section id="route-section" class="mb-6">
+        <h2 class="text-xl font-semibold mb-2">Dodaj trasę</h2>
+        <form id="routeForm" class="space-y-2">
+          <input id="routeFrom" class="w-full p-2 border rounded" placeholder="Skąd" required />
+          <input id="routeTo" class="w-full p-2 border rounded" placeholder="Dokąd" required />
+          <input id="routeDateTime" class="w-full p-2 border rounded" placeholder="Data i godzina" required />
+          <textarea id="routeDesc" class="w-full p-2 border rounded" placeholder="Opis trasy"></textarea>
+          <input id="routeCost" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Koszt" />
+          <button type="submit" class="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600">Dodaj trasę</button>
+        </form>
+        <div id="routesList" class="space-y-2 mt-4">
+          <!-- Lista tras -->
+        </div>
+      </section>
     </div>
   </main>
-
+  
   <!-- Modal do edycji punktów -->
   <div id="editModal" class="fixed inset-0 flex items-center justify-center hidden modal-bg">
     <div class="bg-white p-4 rounded w-11/12 md:w-1/2">
@@ -93,60 +113,87 @@
       </form>
     </div>
   </div>
-
+  
+  <!-- Modal do edycji tras -->
+  <div id="editRouteModal" class="fixed inset-0 flex items-center justify-center hidden modal-bg">
+    <div class="bg-white p-4 rounded w-11/12 md:w-1/2">
+      <h2 class="text-xl font-bold mb-4">Edytuj trasę</h2>
+      <form id="editRouteForm" class="space-y-2">
+        <input id="editRouteFrom" class="w-full p-2 border rounded" placeholder="Skąd" required />
+        <input id="editRouteTo" class="w-full p-2 border rounded" placeholder="Dokąd" required />
+        <input id="editRouteDateTime" class="w-full p-2 border rounded" placeholder="Data i godzina" required />
+        <textarea id="editRouteDesc" class="w-full p-2 border rounded" placeholder="Opis trasy"></textarea>
+        <input id="editRouteCost" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Koszt" />
+        <div class="flex justify-end">
+          <button type="button" id="cancelEditRoute" class="mr-2 bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Anuluj</button>
+          <button type="submit" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Zapisz</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
+    // Rozszerzamy bazę o przechowywanie tras – wersja 2
     class TravelDB extends Dexie {
       constructor() {
         super('TravelDB');
-        this.version(1).stores({ markers: '++id,type,name,address,desc,cost,lat,lng' });
+        this.version(2).stores({
+          markers: '++id,type,name,address,desc,cost,lat,lng',
+          routes: '++id,from,to,dateTime,desc,cost'
+        });
       }
     }
     const db = new TravelDB();
-
+    
     class MarkerManager {
       static async add(data) { await db.markers.add(data); }
       static async update(id, data) { await db.markers.update(id, data); }
       static async getAll() { return db.markers.toArray(); }
       static async remove(id) { await db.markers.delete(id); }
     }
-
+    
+    class RouteManager {
+      static async add(data) { await db.routes.add(data); }
+      static async update(id, data) { await db.routes.update(id, data); }
+      static async getAll() { return db.routes.toArray(); }
+      static async remove(id) { await db.routes.delete(id); }
+    }
+    
     class UI {
       static map;
       static topMap;
       static markersLayer;
       
       static async init() {
-        // Główna mapa
+        // Inicjalizacja głównej mapy
         UI.map = L.map('map').setView([52.2, 21.0], 6);
-        // Mapa w nagłówku – teraz interaktywna (dodano możliwość klikania)
+        // Inicjalizacja mapy w nagłówku (interaktywna)
         UI.topMap = L.map('map-top', { zoomControl: false }).setView([52.2, 21.0], 5);
-
+        
         const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
         tiles.addTo(UI.map);
         tiles.addTo(UI.topMap);
         
         UI.markersLayer = L.markerClusterGroup();
         UI.map.addLayer(UI.markersLayer);
-
-        // Aktywacja Flatpickr (pola departure i arrival muszą istnieć lub można je usunąć)
-        flatpickr('#departure',{enableTime:true,dateFormat:'Y-m-d H:i'});
-        flatpickr('#arrival',{enableTime:true,dateFormat:'Y-m-d H:i'});
-
+        
+        // Inicjalizacja Flatpickr dla pól daty i godziny
+        flatpickr('#routeDateTime', { enableTime: true, dateFormat: 'Y-m-d H:i' });
+        flatpickr('#editRouteDateTime', { enableTime: true, dateFormat: 'Y-m-d H:i' });
+        flatpickr('#departure', { enableTime: true, dateFormat: 'Y-m-d H:i' });
+        flatpickr('#arrival', { enableTime: true, dateFormat: 'Y-m-d H:i' });
+        
         document.getElementById('markerForm').addEventListener('submit', UI.handleAddMarker);
         document.getElementById('filterType').addEventListener('change', UI.renderLists);
         document.getElementById('searchInput').addEventListener('input', UI.renderLists);
-
-        // Umożliwiamy dodawanie punktów klikając na mapę (główna mapa)
-        UI.map.on('click', UI.mapClickAdd);
-        // Dodajemy tą samą funkcjonalność również na mapie w nagłówku
-        UI.topMap.on('click', UI.mapClickAdd);
-
-        // Obsługa formularza edycji
+        document.getElementById('routeForm').addEventListener('submit', UI.handleAddRoute);
+        
+        // Obsługa formularza edycji punktu
         document.getElementById('editMarkerForm').addEventListener('submit', async function(e) {
           e.preventDefault();
           const markerId = this.dataset.markerId;
@@ -155,26 +202,56 @@
           const address = document.getElementById('editMarkerAddress').value;
           const desc = document.getElementById('editMarkerDesc').value;
           const cost = parseFloat(document.getElementById('editMarkerCost').value) || 0;
-          
           await MarkerManager.update(Number(markerId), { type, name, address, desc, cost });
           document.getElementById('editModal').classList.add('hidden');
           UI.renderLists();
         });
-
         document.getElementById('cancelEdit').addEventListener('click', function() {
           document.getElementById('editModal').classList.add('hidden');
         });
         
+        // Obsługa formularza edycji trasy
+        document.getElementById('editRouteForm').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          const routeId = this.dataset.routeId;
+          const from = document.getElementById('editRouteFrom').value;
+          const to = document.getElementById('editRouteTo').value;
+          const dateTime = document.getElementById('editRouteDateTime').value;
+          const desc = document.getElementById('editRouteDesc').value;
+          const cost = parseFloat(document.getElementById('editRouteCost').value) || 0;
+          await RouteManager.update(Number(routeId), { from, to, dateTime, desc, cost });
+          document.getElementById('editRouteModal').classList.add('hidden');
+          UI.renderRoutes();
+        });
+        document.getElementById('cancelEditRoute').addEventListener('click', function() {
+          document.getElementById('editRouteModal').classList.add('hidden');
+        });
+        
+        // Dodawanie punktów przez kliknięcie na mapach (głównej i w nagłówku)
+        UI.map.on('click', UI.mapClickAdd);
+        UI.topMap.on('click', UI.mapClickAdd);
+        
+        // Aktualizacja rozmiaru mapy w nagłówku przy zmianie rozmiaru okna (szczególnie przydatne w widoku mobilnym)
+        window.addEventListener('resize', function() {
+          if (UI.topMap) {
+            UI.topMap.invalidateSize();
+          }
+        });
+        
         await UI.renderLists();
+        await UI.renderRoutes();
       }
-
+      
       static async mapClickAdd(e) {
+        // Pobieramy nazwę i typ punktu dzięki prompt – umożliwiamy użytkownikowi wpisanie dowolnego typu
         const name = prompt("Nazwa punktu:");
         if (!name) return;
-        await MarkerManager.add({type: "Atrakcja", name, address: '', desc: '', cost: 0, lat: e.latlng.lat, lng: e.latlng.lng});
+        let type = prompt("Typ punktu (Jedzenie, Nocleg, Atrakcja):", "Atrakcja");
+        if (!type) type = "Atrakcja";
+        await MarkerManager.add({ type, name, address: '', desc: '', cost: 0, lat: e.latlng.lat, lng: e.latlng.lng });
         UI.renderLists();
       }
-
+      
       static async handleAddMarker(e) {
         e.preventDefault();
         const { markerType: { value: type }, markerName: { value: name }, markerAddress: { value: address }, markerDesc: { value: desc }, markerCost: { value: costRaw } } = e.target;
@@ -186,30 +263,45 @@
         e.target.reset();
         UI.renderLists();
       }
-
+      
+      static async handleAddRoute(e) {
+        e.preventDefault();
+        const routeFrom = document.getElementById('routeFrom').value;
+        const routeTo = document.getElementById('routeTo').value;
+        const routeDateTime = document.getElementById('routeDateTime').value;
+        const routeDesc = document.getElementById('routeDesc').value;
+        const routeCost = parseFloat(document.getElementById('routeCost').value) || 0;
+        await RouteManager.add({ from: routeFrom, to: routeTo, dateTime: routeDateTime, desc: routeDesc, cost: routeCost });
+        e.target.reset();
+        UI.renderRoutes();
+      }
+      
       static async renderLists() {
         const allMarkers = await MarkerManager.getAll();
         const filter = document.getElementById('filterType').value;
         const search = document.getElementById('searchInput').value.toLowerCase();
-
+        
         UI.markersLayer.clearLayers();
         const container = document.getElementById('placesList');
         container.innerHTML = '';
         let food = 0, lodging = 0, attr = 0;
-
+        
         for (const m of allMarkers) {
           if ((filter !== 'Wszystko' && m.type !== filter) || (search && !m.name.toLowerCase().includes(search))) continue;
-
+          
           const div = document.createElement('div');
           div.className = 'p-2 bg-white rounded shadow';
-          div.innerHTML = `<strong>${m.name}</strong><p>${m.type}</p><p>${m.desc}</p><p>${m.address}</p><p>Koszt: ${m.cost.toFixed(2)}</p>`;
-
-          // Zamiast uproszczonej edycji z promptem, wywołujemy modal edycji
+          div.innerHTML = `<strong>${m.name}</strong>
+                           <p>${m.type}</p>
+                           <p>${m.desc}</p>
+                           <p>${m.address}</p>
+                           <p>Koszt: ${m.cost.toFixed(2)}</p>`;
+          
           const btnEdit = document.createElement('button');
           btnEdit.textContent = 'Edytuj';
           btnEdit.className = 'text-blue-500 mr-2';
           btnEdit.onclick = () => UI.openEditModal(m);
-
+          
           const btnRemove = document.createElement('button');
           btnRemove.textContent = 'Usuń';
           btnRemove.className = 'text-red-500';
@@ -217,26 +309,58 @@
             await MarkerManager.remove(m.id);
             UI.renderLists();
           };
-
+          
           const btnWrap = document.createElement('div');
           btnWrap.className = 'mt-2';
           btnWrap.append(btnEdit, btnRemove);
-          div.append(btnWrap);
-
+          div.appendChild(btnWrap);
+          
           container.appendChild(div);
           const marker = L.marker([m.lat, m.lng]).bindPopup(`<strong>${m.name}</strong><br>${m.desc}`);
           UI.markersLayer.addLayer(marker);
-
+          
           if (m.type === 'Jedzenie') food += m.cost;
           if (m.type === 'Nocleg') lodging += m.cost;
           if (m.type === 'Atrakcja') attr += m.cost;
         }
-
+        
         document.getElementById('costSummary').innerHTML =
-          `<p>Jedzenie: ${food.toFixed(2)}</p><p>Nocleg: ${lodging.toFixed(2)}</p><p>Atrakcje: ${attr.toFixed(2)}</p><p class="font-bold">Razem: ${(food + lodging + attr).toFixed(2)}</p>`;
+          `<p>Jedzenie: ${food.toFixed(2)}</p>
+           <p>Nocleg: ${lodging.toFixed(2)}</p>
+           <p>Atrakcje: ${attr.toFixed(2)}</p>
+           <p class="font-bold">Razem: ${(food + lodging + attr).toFixed(2)}</p>`;
       }
-
-      // Funkcja otwierająca modal edycji z predefiniowanymi danymi punktu
+      
+      static async renderRoutes() {
+        const allRoutes = await RouteManager.getAll();
+        const container = document.getElementById('routesList');
+        container.innerHTML = '';
+        for (const r of allRoutes) {
+          const div = document.createElement('div');
+          div.className = 'p-2 bg-white rounded shadow';
+          div.innerHTML = `<strong>Trasa: ${r.from} → ${r.to}</strong>
+                           <p>Data i godzina: ${r.dateTime}</p>
+                           <p>Opis: ${r.desc}</p>
+                           <p>Koszt: ${r.cost.toFixed(2)}</p>`;
+          const btnEdit = document.createElement('button');
+          btnEdit.textContent = 'Edytuj';
+          btnEdit.className = 'text-blue-500 mr-2';
+          btnEdit.onclick = () => UI.openEditRouteModal(r);
+          const btnRemove = document.createElement('button');
+          btnRemove.textContent = 'Usuń';
+          btnRemove.className = 'text-red-500';
+          btnRemove.onclick = async () => {
+            await RouteManager.remove(r.id);
+            UI.renderRoutes();
+          };
+          const btnWrap = document.createElement('div');
+          btnWrap.className = 'mt-2';
+          btnWrap.append(btnEdit, btnRemove);
+          div.appendChild(btnWrap);
+          container.appendChild(div);
+        }
+      }
+      
       static openEditModal(marker) {
         const form = document.getElementById('editMarkerForm');
         form.dataset.markerId = marker.id;
@@ -247,8 +371,19 @@
         document.getElementById('editMarkerCost').value = marker.cost;
         document.getElementById('editModal').classList.remove('hidden');
       }
+      
+      static openEditRouteModal(route) {
+        const form = document.getElementById('editRouteForm');
+        form.dataset.routeId = route.id;
+        document.getElementById('editRouteFrom').value = route.from;
+        document.getElementById('editRouteTo').value = route.to;
+        document.getElementById('editRouteDateTime').value = route.dateTime;
+        document.getElementById('editRouteDesc').value = route.desc;
+        document.getElementById('editRouteCost').value = route.cost;
+        document.getElementById('editRouteModal').classList.remove('hidden');
+      }
     }
-
+    
     document.addEventListener('DOMContentLoaded', UI.init);
   </script>
 </body>
