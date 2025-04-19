@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="pl">
+<!DOCTYPE html>
+<html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,6 +23,7 @@
 <body class="font-sans bg-gray-100 text-gray-800">
   <header class="bg-white shadow p-4 sticky top-0 z-10">
     <h1 class="text-2xl font-bold">Mapa Podróży</h1>
+    <!-- Mapa w nagłówku – teraz interaktywna -->
     <div id="map-top" class="mt-2 rounded overflow-hidden"></div>
   </header>
   <main class="flex flex-col md:flex-row h-[calc(100vh-16rem)]">
@@ -45,31 +47,59 @@
           <input id="markerCost" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Koszt" />
           <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Dodaj punkt</button>
         </form>
-      </section><!-- Filter/Search -->
-  <div class="mb-6">
-    <input id="searchInput" class="w-full p-2 border rounded mb-2" placeholder="Szukaj punktu...">
-    <select id="filterType" class="w-full p-2 border rounded">
-      <option value="Wszystko">Wszystko</option>
-      <option value="Jedzenie">Jedzenie</option>
-      <option value="Nocleg">Nocleg</option>
-      <option value="Atrakcja">Atrakcja</option>
-    </select>
+      </section>
+      <!-- Filter/Search -->
+      <div class="mb-6">
+        <input id="searchInput" class="w-full p-2 border rounded mb-2" placeholder="Szukaj punktu...">
+        <select id="filterType" class="w-full p-2 border rounded">
+          <option value="Wszystko">Wszystko</option>
+          <option value="Jedzenie">Jedzenie</option>
+          <option value="Nocleg">Nocleg</option>
+          <option value="Atrakcja">Atrakcja</option>
+        </select>
+      </div>
+      <!-- Lists & Summary -->
+      <section id="lists-section" class="space-y-4">
+        <div>
+          <h3 class="font-semibold">Lista punktów</h3>
+          <div id="placesList" class="space-y-2"></div>
+        </div>
+        <div>
+          <h3 class="font-semibold">Podsumowanie kosztów</h3>
+          <div id="costSummary" class="space-y-1"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Modal do edycji punktów -->
+  <div id="editModal" class="fixed inset-0 flex items-center justify-center hidden modal-bg">
+    <div class="bg-white p-4 rounded w-11/12 md:w-1/2">
+      <h2 class="text-xl font-bold mb-4">Edytuj punkt</h2>
+      <form id="editMarkerForm" class="space-y-2">
+        <select id="editMarkerType" class="w-full p-2 border rounded">
+          <option value="Jedzenie">Jedzenie</option>
+          <option value="Nocleg">Nocleg</option>
+          <option value="Atrakcja">Atrakcja</option>
+        </select>
+        <input id="editMarkerName" class="w-full p-2 border rounded" placeholder="Nazwa" required />
+        <input id="editMarkerAddress" class="w-full p-2 border rounded" placeholder="Adres (autocomplete)" list="addressSuggestions" />
+        <textarea id="editMarkerDesc" class="w-full p-2 border rounded" placeholder="Opis"></textarea>
+        <input id="editMarkerCost" type="number" min="0" step="0.01" class="w-full p-2 border rounded" placeholder="Koszt" />
+        <div class="flex justify-end">
+          <button type="button" id="cancelEdit" class="mr-2 bg-gray-500 text-white p-2 rounded hover:bg-gray-600">Anuluj</button>
+          <button type="submit" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Zapisz</button>
+        </div>
+      </form>
+    </div>
   </div>
 
-  <!-- Lists & Summary -->
-  <section id="lists-section" class="space-y-4">
-    <div>
-      <h3 class="font-semibold">Lista punktów</h3>
-      <div id="placesList" class="space-y-2"></div>
-    </div>
-    <div>
-      <h3 class="font-semibold">Podsumowanie kosztów</h3>
-      <div id="costSummary" class="space-y-1"></div>
-    </div>
-  </section>
-</div>
-
-  </main>  <!-- Scripts -->  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>  <script>
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script>
     class TravelDB extends Dexie {
       constructor() {
         super('TravelDB');
@@ -86,16 +116,24 @@
     }
 
     class UI {
-      static map; static topMap; static markersLayer;
+      static map;
+      static topMap;
+      static markersLayer;
+      
       static async init() {
+        // Główna mapa
         UI.map = L.map('map').setView([52.2, 21.0], 6);
-        UI.topMap = L.map('map-top', { zoomControl: false, dragging: false }).setView([52.2, 21.0], 5);
+        // Mapa w nagłówku – teraz interaktywna (dodano możliwość klikania)
+        UI.topMap = L.map('map-top', { zoomControl: false }).setView([52.2, 21.0], 5);
 
         const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
-        tiles.addTo(UI.map); tiles.addTo(UI.topMap);
+        tiles.addTo(UI.map);
+        tiles.addTo(UI.topMap);
+        
         UI.markersLayer = L.markerClusterGroup();
         UI.map.addLayer(UI.markersLayer);
 
+        // Aktywacja Flatpickr (pola departure i arrival muszą istnieć lub można je usunąć)
         flatpickr('#departure',{enableTime:true,dateFormat:'Y-m-d H:i'});
         flatpickr('#arrival',{enableTime:true,dateFormat:'Y-m-d H:i'});
 
@@ -103,7 +141,30 @@
         document.getElementById('filterType').addEventListener('change', UI.renderLists);
         document.getElementById('searchInput').addEventListener('input', UI.renderLists);
 
+        // Umożliwiamy dodawanie punktów klikając na mapę (główna mapa)
         UI.map.on('click', UI.mapClickAdd);
+        // Dodajemy tą samą funkcjonalność również na mapie w nagłówku
+        UI.topMap.on('click', UI.mapClickAdd);
+
+        // Obsługa formularza edycji
+        document.getElementById('editMarkerForm').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          const markerId = this.dataset.markerId;
+          const type = document.getElementById('editMarkerType').value;
+          const name = document.getElementById('editMarkerName').value;
+          const address = document.getElementById('editMarkerAddress').value;
+          const desc = document.getElementById('editMarkerDesc').value;
+          const cost = parseFloat(document.getElementById('editMarkerCost').value) || 0;
+          
+          await MarkerManager.update(Number(markerId), { type, name, address, desc, cost });
+          document.getElementById('editModal').classList.add('hidden');
+          UI.renderLists();
+        });
+
+        document.getElementById('cancelEdit').addEventListener('click', function() {
+          document.getElementById('editModal').classList.add('hidden');
+        });
+        
         await UI.renderLists();
       }
 
@@ -118,7 +179,8 @@
         e.preventDefault();
         const { markerType: { value: type }, markerName: { value: name }, markerAddress: { value: address }, markerDesc: { value: desc }, markerCost: { value: costRaw } } = e.target;
         const cost = parseFloat(costRaw) || 0;
-        const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`).then(r => r.json());
+        const geo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+                          .then(r => r.json());
         const { lat, lon } = geo[0] || { lat: 52.2, lon: 21.0 };
         await MarkerManager.add({ type, name, address, desc, cost, lat, lng: lon });
         e.target.reset();
@@ -142,16 +204,11 @@
           div.className = 'p-2 bg-white rounded shadow';
           div.innerHTML = `<strong>${m.name}</strong><p>${m.type}</p><p>${m.desc}</p><p>${m.address}</p><p>Koszt: ${m.cost.toFixed(2)}</p>`;
 
+          // Zamiast uproszczonej edycji z promptem, wywołujemy modal edycji
           const btnEdit = document.createElement('button');
           btnEdit.textContent = 'Edytuj';
           btnEdit.className = 'text-blue-500 mr-2';
-          btnEdit.onclick = async () => {
-            const newName = prompt('Nowa nazwa:', m.name);
-            if (newName) {
-              await MarkerManager.update(m.id, { name: newName });
-              UI.renderLists();
-            }
-          };
+          btnEdit.onclick = () => UI.openEditModal(m);
 
           const btnRemove = document.createElement('button');
           btnRemove.textContent = 'Usuń';
@@ -178,8 +235,21 @@
         document.getElementById('costSummary').innerHTML =
           `<p>Jedzenie: ${food.toFixed(2)}</p><p>Nocleg: ${lodging.toFixed(2)}</p><p>Atrakcje: ${attr.toFixed(2)}</p><p class="font-bold">Razem: ${(food + lodging + attr).toFixed(2)}</p>`;
       }
+
+      // Funkcja otwierająca modal edycji z predefiniowanymi danymi punktu
+      static openEditModal(marker) {
+        const form = document.getElementById('editMarkerForm');
+        form.dataset.markerId = marker.id;
+        document.getElementById('editMarkerType').value = marker.type;
+        document.getElementById('editMarkerName').value = marker.name;
+        document.getElementById('editMarkerAddress').value = marker.address;
+        document.getElementById('editMarkerDesc').value = marker.desc;
+        document.getElementById('editMarkerCost').value = marker.cost;
+        document.getElementById('editModal').classList.remove('hidden');
+      }
     }
 
     document.addEventListener('DOMContentLoaded', UI.init);
-  </script></body>
+  </script>
+</body>
 </html>
